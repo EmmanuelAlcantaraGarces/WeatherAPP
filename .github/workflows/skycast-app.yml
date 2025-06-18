@@ -1,0 +1,70 @@
+name: Build & Deploy BlazorApp
+
+on:
+  push:
+    branches: ["main"]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '22.x'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descargar el codigo
+      - name: Descargar Codigo
+        uses: actions/checkout@v4
+
+      # 2. Instalar .NET
+      - name: Setup -NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # 3. Insatalar Nugets
+      - name: Instalar Nugets
+        uses: actions/cache@v3
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashfiles('**/*.csproj')}}
+
+      # 4. Instalar Node para Tailwind
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # 5. Restore and publish
+      - name: Publicar BlazorApp
+        run: |
+          dotner Restore
+          # Inyectar API Key
+          echo "{\"OpenWeather\":{\"Key\":\"${{ secrets.OPENWEATHER_KEY }}\"}}" > SkyCast/appsettings.Production.json
+          dotnet publish SkyCast/SkyCast.csproj -c Release -o publish
+        
+      - name: Listar salida
+        run: |
+          echo "Contenido Generado"
+
+      # 6. Crear Artifact
+      - name: Crear Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish
+          path: publish
+
+      # 7. Despliegue
+      - name: Deploy to Pages
+        uses: peaceiris/actions-sh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: SkyCast/publish/wwwroot
+          force_orphan: true
+
