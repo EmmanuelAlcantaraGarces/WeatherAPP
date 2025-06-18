@@ -52,6 +52,7 @@ jobs:
       - name: Listar salida
         run: |
           echo "Contenido Generado"
+          ls -R publish | head -n 20
 
       # 6. Crear Artifact
       - name: Crear Artifact
